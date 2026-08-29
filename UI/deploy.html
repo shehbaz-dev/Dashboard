@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>THOR — DEPLOY</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#cc0000;--red-bright:#ff1a1a;--red-dim:#7a0000;--red-glow:rgba(204,0,0,0.35);--bg:#050505;--border:rgba(200,30,30,0.35);--text:#e8e8e8;--text-dim:#777;--text-muted:#555;--green-ok:#00ff88;--font-mono:'Share Tech Mono',monospace;--font-display:'Orbitron',sans-serif;--font-body:'Rajdhani',sans-serif;--radius:12px;--radius-sm:6px;--transition:0.25s cubic-bezier(0.4,0,0.2,1);}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent;}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);}
+#page{position:relative;z-index:10;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at center,#1a0000 0%,#000 100%);}
+.deploy-card{width:100%;max-width:480px;background:rgba(8,0,0,0.9);border:1px solid var(--border);border-radius:var(--radius);padding:30px 24px;box-shadow:0 0 60px rgba(255,0,0,0.08);backdrop-filter:blur(12px);}
+.title{font-family:var(--font-display);font-size:16px;color:var(--red-bright);letter-spacing:5px;margin-bottom:6px;text-align:center;text-shadow:0 0 15px var(--red-glow);}
+.subtitle{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);text-align:center;letter-spacing:3px;margin-bottom:24px;}
+.form-group{margin-bottom:18px;}
+.label{display:block;font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-bottom:6px;letter-spacing:2px;}
+.input-wrap{display:flex;gap:8px;}
+.input-wrap input{flex:1;background:#000;border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;outline:none;transition:var(--transition);}
+.input-wrap input:focus{border-color:var(--red-bright);box-shadow:0 0 12px var(--red-glow);}
+.deploy-btn{width:100%;padding:14px;background:var(--red-dim);border:1px solid var(--red-bright);color:#fff;font-family:var(--font-display);font-size:11px;letter-spacing:3px;cursor:pointer;border-radius:var(--radius-sm);transition:var(--transition);margin-top:8px;}
+.deploy-btn:hover:not(:disabled){background:var(--red-bright);box-shadow:0 0 25px var(--red-glow);transform:translateY(-2px);}
+.deploy-btn:disabled{opacity:0.4;cursor:not-allowed;}
+#status-box{background:rgba(0,0,0,0.7);border:1px solid rgba(180,0,0,0.2);border-radius:var(--radius-sm);padding:14px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);height:150px;overflow-y:auto;margin-top:16px;}
+.log-line{margin-bottom:5px;border-left:2px solid var(--red-dim);padding-left:10px;font-size:10px;}
+.log-line.success{border-color:var(--green-ok);color:var(--green-ok);}
+.download-link{color:var(--red-bright);text-decoration:underline;cursor:pointer;}
+@media(max-width:500px){.deploy-card{padding:20px 16px;}.title{font-size:14px;}.input-wrap{flex-direction:column;}}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div id="page">
+  <div class="deploy-card">
+    <div class="title">// DEPLOY_STATION</div>
+    <div class="subtitle">PAYLOAD_DELIVERY_SYSTEM</div>
+    <div class="form-group">
+      <span class="label">TARGET_HOST_IP</span>
+      <input type="text" id="host-ip" placeholder="e.g. 192.168.1.100" style="width:100%;background:#000;border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;outline:none;transition:var(--transition);">
+    </div>
+    <div class="form-group">
+      <span class="label">TARGET_PORT</span>
+      <input type="number" id="host-port" value="7777" style="width:100%;background:#000;border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:13px;outline:none;transition:var(--transition);">
+    </div>
+    <button id="build-btn" class="deploy-btn" onclick="startBuild()">INITIALIZE BUILD</button>
+    <div id="status-box">
+      <div class="log-line">// SYSTEM_IDLE... AWAITING_PARAMETERS</div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();
+const buildBtn=document.getElementById('build-btn');
+const statusBox=document.getElementById('status-box');
+function log(msg,type=''){
+  const line=document.createElement('div');line.className='log-line '+type;
+  line.textContent=`> [${new Date().toLocaleTimeString()}] ${msg}`;
+  statusBox.appendChild(line);statusBox.scrollTop=statusBox.scrollHeight;
+}
+function startBuild(){
+  const ip=document.getElementById('host-ip').value;
+  const port=document.getElementById('host-port').value;
+  if(!ip){log('ERROR: INVALID_HOST');return;}
+  buildBtn.disabled=true;
+  log('INITIALIZING_COMPILER...');
+  socket.emit('build_apk',{ip,port});
+}
+socket.on('build_log',(data)=>{data.split('\n').forEach(l=>{if(l.trim())log(l.trim());});});
+socket.on('build_success',(file)=>{
+  const link=document.createElement('a');link.href='/output/'+file;link.className='download-link';link.textContent='DOWNLOAD_PAYLOAD';link.target='_blank';
+  const container=document.createElement('div');container.className='log-line success';
+  container.innerHTML='BUILD_COMPLETE: ';container.appendChild(link);
+  statusBox.appendChild(container);statusBox.scrollTop=statusBox.scrollHeight;
+  buildBtn.disabled=false;
+});
+</script>
+</body>
+</html>

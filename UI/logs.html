@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CURSE RAT — LOGS</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#cc0000;--red-bright:#ff1a1a;--red-dim:#7a0000;--red-glow:rgba(204,0,0,0.35);--bg:#050505;--border:rgba(200,30,30,0.3);--text:#e8e8e8;--text-dim:#777;--text-muted:#555;--font-mono:'Share Tech Mono',monospace;--font-display:'Orbitron',sans-serif;--font-body:'Rajdhani',sans-serif;--radius:12px;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent;}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);}
+#page{position:relative;z-index:10;width:100%;height:100%;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 30%,rgba(80,0,0,0.06),transparent 70%);}
+.header{display:flex;align-items:center;gap:12px;padding:14px 20px;background:rgba(5,0,0,0.95);border-bottom:1px solid var(--border);flex-shrink:0;backdrop-filter:blur(10px);}
+.header-icon{font-size:20px;color:var(--red-bright);filter:drop-shadow(0 0 8px var(--red-glow));}
+.header-text{font-family:var(--font-display);font-size:15px;letter-spacing:4px;color:var(--red-bright);}
+.header-sub{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:2px;margin-left:auto;}
+.content{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;flex-direction:column;gap:16px;}
+.status-ring{width:120px;height:120px;border-radius:50%;border:3px solid var(--red-dim);display:flex;align-items:center;justify-content:center;position:relative;animation:ringPulse 3s ease-in-out infinite;}
+.status-ring::before{content:'';position:absolute;width:140%;height:140%;border-radius:50%;border:1px solid rgba(200,0,0,0.15);animation:ringExpand 3s ease-in-out infinite;}
+@keyframes ringPulse{0%,100%{box-shadow:0 0 20px var(--red-glow),inset 0 0 20px rgba(200,0,0,0.05);}50%{box-shadow:0 0 40px var(--red-glow),inset 0 0 40px rgba(200,0,0,0.1);}}
+@keyframes ringExpand{0%,100%{transform:scale(1);opacity:0.5;}50%{transform:scale(1.1);opacity:0.2;}}
+.ring-icon{font-size:40px;z-index:2;filter:drop-shadow(0 0 10px var(--red-glow));}
+.module-title{font-family:var(--font-display);font-size:24px;letter-spacing:6px;color:var(--red-bright);text-shadow:0 0 20px var(--red-glow);}
+.module-sub{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:3px;}
+.module-status{font-family:var(--font-mono);font-size:9px;color:var(--red-dim);letter-spacing:2px;padding:6px 16px;border:1px solid rgba(200,0,0,0.2);border-radius:20px;background:rgba(200,0,0,0.05);}
+.progress-line{width:200px;height:2px;background:linear-gradient(90deg,transparent,var(--red-dim),transparent);animation:scan 2.5s ease-in-out infinite;}
+@keyframes scan{0%,100%{opacity:0.3;width:100px;}50%{opacity:1;width:280px;}}
+.blink::after{content:'_';animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+@media(max-width:500px){.module-title{font-size:18px;}.status-ring{width:90px;height:90px;}.ring-icon{font-size:30px;}}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div id="page">
+  <div class="header">
+    <span class="header-icon">☰</span>
+    <span class="header-text">EVENT_LOGS</span>
+    <span class="header-sub">MODULE v0.1</span>
+  </div>
+  <div class="content">
+    <div class="status-ring"><div class="ring-icon">📋</div></div>
+    <div class="module-title blink">LOGS</div>
+    <div class="module-sub">// Event logging module</div>
+    <div class="progress-line"></div>
+    <div class="module-status">⟳ BACKEND INTEGRATION IN PROGRESS</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;max-width:300px;text-align:center;line-height:1.6;">
+      Real-time event aggregation, filtering, and export functionality coming soon.
+    </div>
+  </div>
+</div>
+</body>
+</html>

