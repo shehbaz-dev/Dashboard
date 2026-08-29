@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SHEHBAZ RAT - Authentication</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; color: #e00; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+.scanlines { position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px); z-index: 10; }
+.login-box { background: rgba(10,0,0,0.9); border: 1px solid #a00; padding: 50px 40px; box-shadow: 0 0 60px rgba(200,0,0,0.2), inset 0 0 60px rgba(200,0,0,0.05); position: relative; z-index: 5; min-width: 320px; }
+h2 { text-align: center; font-size: 28px; letter-spacing: 8px; color: #f00; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,0,0,0.5); font-family: 'Courier New', monospace; }
+.subtitle { text-align: center; color: #855; font-size: 11px; letter-spacing: 4px; margin-bottom: 30px; text-transform: uppercase; }
+.input-group { margin: 20px 0; }
+label { display: block; color: #a44; font-size: 12px; letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase; }
+input { display: block; width: 100%; padding: 12px 15px; background: rgba(20,0,0,0.8); border: 1px solid #400; color: #e00; font-family: 'Courier New', monospace; font-size: 14px; outline: none; transition: border 0.3s; }
+input:focus { border-color: #c00; box-shadow: 0 0 15px rgba(200,0,0,0.2); }
+button { width: 100%; padding: 14px; background: linear-gradient(180deg, #600, #300); border: 1px solid #a00; color: #fff; font-family: 'Courier New', monospace; font-size: 14px; letter-spacing: 4px; cursor: pointer; text-transform: uppercase; margin-top: 10px; transition: all 0.3s; }
+button:hover { background: linear-gradient(180deg, #800, #500); box-shadow: 0 0 30px rgba(200,0,0,0.3); }
+.error { color: #f44; font-size: 12px; text-align: center; margin-top: 15px; display: none; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
+.cursor-blink { animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="login-box">
+    <h2>SHEHBAZ RAT</h2>
+    <div class="subtitle">Secure Authentication Required</div>
+    <form id="loginForm" autocomplete="off">
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Enter username..." required autocomplete="off">
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter password..." required autocomplete="off">
+        </div>
+        
+           <input type="checkbox" name="remember" id="remember">
+           <label for="remember">Remember Me</label>
+        <button type="submit">[ Authenticate ]</button>
+        <div class="error" id="errorMsg">ACCESS DENIED - Invalid credentials</div>
+    </form>
+</div>
+<script>
+document.getElementById('loginForm').onsubmit = async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button');
+    btn.textContent = '[ Authenticating... ]';
+    btn.disabled = true;
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'username=' + encodeURIComponent(document.getElementById('username').value) +
+                  '&password=' + encodeURIComponent(document.getElementById('password').value)
+        });
+        if (res.ok) { window.location.href = '/'; }
+        else { 
+            document.getElementById('errorMsg').style.display = 'block';
+            btn.textContent = '[ Authenticate ]';
+            btn.disabled = false;
+        }
+    } catch(e) {
+        document.getElementById('errorMsg').style.display = 'block';
+        btn.textContent = '[ Authenticate ]';
+        btn.disabled = false;
+    }
+};
+</script>
+</body>
+</html>

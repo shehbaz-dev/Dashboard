@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CURSE RAT — THOR DASHBOARD</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ═══════════════════════════════════════════
+     CRITICAL INLINE STYLES — load before CSS
+     (avoids FOUC on slow mobile networks)
+  ═══════════════════════════════════════════ */
+  :root {
+    --red: #cc0000; --red-bright: #ff1a1a; --red-dim: #7a0000;
+    --red-glow: rgba(204,0,0,0.3); --bg: #050505; --bg2: #0a0a0a;
+    --panel: rgba(8,0,0,0.88); --border: rgba(200,30,30,0.35);
+    --text: #e8e8e8; --text-dim: #777; --green-ok: #00ff88;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-display: 'Orbitron', sans-serif;
+    --font-body: 'Rajdhani', sans-serif;
+    --nav-h: 64px; --nav-mob-h: 56px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--font-body); overflow:hidden; user-select:none; -webkit-tap-highlight-color:transparent; }
+  a { color:var(--red-bright); text-decoration:none; }
+  ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:#000; } ::-webkit-scrollbar-thumb { background:var(--red-dim); border-radius:2px; }
+  canvas#bg-canvas { position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.6; }
+  .scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px); }
+  #app { position:relative; z-index:10; width:100%; height:100%; display:flex; flex-direction:column; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+
+<div id="app">
+
+  <!-- ═══ TOP HEADER ═══ -->
+  <header id="top-header">
+    <div class="header-left">
+      <button id="menu-toggle" class="menu-btn" aria-label="Toggle Menu">☰</button>
+      <div class="brand">
+        <span class="brand-icon">⛧</span>
+        <span class="brand-text">CURSE<span class="brand-accent">RAT</span></span>
+      </div>
+    </div>
+    <div class="header-center" id="header-center">
+      <span class="header-badge" id="listener-status-badge">OFFLINE</span>
+      <span class="header-sep">|</span>
+      <span class="header-clients" id="client-count">0</span>
+      <span class="header-clients-label">NODES</span>
+    </div>
+    <div class="header-right">
+      <span id="clock" class="clock">--</span>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN LAYOUT ═══ -->
+  <div id="layout">
+
+    <!-- SIDEBAR (desktop) / DRAWER (mobile) -->
+    <nav id="sidebar">
+      <div class="nav-section-label">NAVIGATION</div>
+      <button class="nav-btn active" id="btn-home" data-page="home">
+        <span class="nav-icon">⌂</span><span class="nav-label">DASHBOARD</span>
+      </button>
+      <button class="nav-btn" id="btn-clients" data-page="clients">
+        <span class="nav-icon">◉</span><span class="nav-label">CLIENTS</span>
+      </button>
+      <button class="nav-btn" id="btn-logs" data-page="logs">
+        <span class="nav-icon">☰</span><span class="nav-label">LOGS</span>
+      </button>
+      <button class="nav-btn" id="btn-add" data-page="build">
+        <span class="nav-icon">⚡</span><span class="nav-label">BUILDER</span>
+      </button>
+      <button class="nav-btn" id="btn-deploy" data-page="deploy">
+        <span class="nav-icon">⇧</span><span class="nav-label">DEPLOY</span>
+      </button>
+      <button class="nav-btn" id="btn-settings" data-page="settings">
+        <span class="nav-icon">⚙</span><span class="nav-label">SETTINGS</span>
+      </button>
+      <div class="nav-footer">
+        <div class="nav-version">v3.0.0</div>
+      </div>
+    </nav>
+
+    <!-- OVERLAY for mobile drawer -->
+    <div id="sidebar-overlay"></div>
+
+    <!-- ═══ CONTENT ═══ -->
+    <main id="content">
+
+      <!-- HOME VIEW -->
+      <div id="home-view" class="view active">
+
+        <!-- Row 1: Globe + Stats -->
+        <div class="grid-2col">
+          <!-- Globe -->
+          <div class="card globe-card">
+            <div class="card-header">
+              <span class="card-dot pulse"></span>
+              <span>GLOBAL_TARGETING</span>
+              <span class="card-badge" id="threat-level">THREAT: LOW</span>
+            </div>
+            <div class="card-body" id="globe-container">
+              <div id="earth_div"></div>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="card stats-card">
+            <div class="card-header"><span class="card-dot"></span>TELEMETRY</div>
+            <div class="card-body stats-grid">
+              <div class="stat-group">
+                <div class="stat-label">▲ TX</div>
+                <div class="stat-row"><span class="stat-key">PACKETS</span><span class="stat-val" id="sent-packets">0</span></div>
+                <div class="stat-row"><span class="stat-key">BYTES</span><span class="stat-val" id="sent-bytes">0 B</span></div>
+                <div class="stat-row"><span class="stat-key">RATE</span><span class="stat-val" id="sent-rate">0 B/s</span></div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-group">
+                <div class="stat-label">▼ RX</div>
+                <div class="stat-row"><span class="stat-key">PACKETS</span><span class="stat-val" id="recv-packets">0</span></div>
+                <div class="stat-row"><span class="stat-key">BYTES</span><span class="stat-val" id="recv-bytes">0 B</span></div>
+                <div class="stat-row"><span class="stat-key">RATE</span><span class="stat-val" id="recv-rate">0 B/s</span></div>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-group">
+                <div class="stat-label">⚙ SYS</div>
+                <div class="stat-row"><span class="stat-key">CPU</span><span class="stat-val" id="sys-cpu">--</span></div>
+                <div class="stat-row"><span class="stat-key">RAM</span><span class="stat-val" id="sys-ram">--</span></div>
+                <div class="stat-row"><span class="stat-key">UPTIME</span><span class="stat-val" id="sys-uptime">--</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Ports + Clients + Terminal -->
+        <div class="grid-3col">
+          <!-- Port Manager -->
+          <div class="card port-card">
+            <div class="card-header">
+              <span class="card-dot"></span>
+              <span>LISTENERS</span>
+              <span class="card-badge" id="port-count">0</span>
+            </div>
+            <div class="card-body">
+              <div class="port-display-row">
+                <span id="port-display" class="port-trigger">NONE ▾</span>
+              </div>
+              <div id="active-ports-list" class="port-list"></div>
+            </div>
+          </div>
+
+          <!-- Clients Table -->
+          <div class="card clients-card">
+            <div class="card-header"><span class="card-dot"></span>ACTIVE NODES</div>
+            <div class="card-body card-body-scroll" id="clients-scroll">
+              <table id="target-table">
+                <thead><tr><th>ID</th><th>IP</th><th>STATUS</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <div id="no-clients" class="empty-state">⏳ Waiting for nodes...</div>
+            </div>
+          </div>
+
+          <!-- Terminal -->
+          <div class="card term-card">
+            <div class="card-header"><span class="card-dot"></span>CONSOLE</div>
+            <div class="card-body term-body" id="console-output">
+              <div class="term-line">// SYSTEM INITIALIZED</div>
+              <div id="term-lines"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /home-view -->
+
+      <!-- IFRAME VIEW (for sub-pages) -->
+      <div id="iframe-view" class="view">
+        <iframe id="iframe-frame" src="" frameborder="0"></iframe>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ═══ MOBILE BOTTOM NAV ═══ -->
+  <nav id="bottom-nav">
+    <button class="bnav-btn active" data-page="home"><span class="bnav-icon">⌂</span><span class="bnav-label">HOME</span></button>
+    <button class="bnav-btn" data-page="clients"><span class="bnav-icon">◉</span><span class="bnav-label">NODES</span></button>
+    <button class="bnav-btn" data-page="build"><span class="bnav-icon">⚡</span><span class="bnav-label">BUILD</span></button>
+    <button class="bnav-btn" data-page="deploy"><span class="bnav-icon">⇧</span><span class="bnav-label">DEPLOY</span></button>
+    <button class="bnav-btn" data-page="settings"><span class="bnav-icon">⚙</span><span class="bnav-label">SET</span></button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ═══ PORT DROPDOWN (body-level) ═══ -->
+<div id="port-dropdown" class="port-dropdown">
+  <div class="pdd-title">ADD LISTENER</div>
+  <div class="pdd-row">
+    <input type="number" id="new-port-input" placeholder="PORT" min="1" max="65535">
+    <button id="add-port-btn">START</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL (from client.js) ═══ -->
+<div id="modal" class="modal-overlay">
+  <div class="modal-box">
+    <div id="modal-body"></div>
+    <button class="modal-close" onclick="document.getElementById('modal').style.display='none'">✕</button>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS ═══ -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+<script>
+/* ═══════════════════════════════════════════
+   INLINE DASHBOARD LOGIC
+   — ALL IDs, socket events, function names UNCHANGED
+   — Only UI/UX enhanced, no backend logic touched
+   ═══════════════════════════════════════════ */
+
+(function() {
+
+/* ── BACKGROUND CANVAS ── */
+(function() {
+  const c = document.getElementById('bg-canvas');
+  const ctx = c.getContext('2d');
+  let w, h, particles = [];
+  function resize() { w=c.width=innerWidth; h=c.height=innerHeight; }
+  window.addEventListener('resize', resize); resize();
+  class P {
+    constructor() { this.reset(); }
+    reset() { this.x=Math.random()*w; this.y=Math.random()*h; this.vx=(Math.random()-0.5)*0.4; this.vy=(Math.random()-0.5)*0.4; this.r=Math.random()*1.5+0.5; }
+    update() { this.x+=this.vx; this.y+=this.vy; if(this.x<0||this.x>w||this.y<0||this.y>h) this.reset(); }
+    draw() { ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle=`rgba(200,30,30,${0.15+Math.random()*0.25})`; ctx.fill(); }
+  }
+  for(let i=0;i<60;i++) particles.push(new P());
+  function anim() { ctx.clearRect(0,0,w,h); particles.forEach(p=>{p.update();p.draw();}); requestAnimationFrame(anim); }
+  anim();
+})();
+
+/* ── TELEMETRY ── */
+socket.on('telemetry_update', (data) => {
+  const stats = data.stats || {sent:{packets:0,bytes:0,rate:0},recv:{packets:0,bytes:0,rate:0}};
+  const sysInfo = data.sysInfo || {cpu:'--',ram:'--',uptime:'--'};
+  const connectedClients = data.clients || [];
+
+  function fmt(b) {
+    if(!b||b===0) return '0 B';
+    if(b<1024) return b+' B';
+    if(b<1048576) return (b/1024).toFixed(1)+' KB';
+    return (b/1048576).toFixed(2)+' MB';
+  }
+
+  document.getElementById('sent-packets').textContent = stats.sent.packets;
+  document.getElementById('sent-bytes').textContent = fmt(stats.sent.bytes);
+  document.getElementById('sent-rate').textContent = fmt(stats.sent.rate)+'/s';
+  document.getElementById('recv-packets').textContent = stats.recv.packets;
+  document.getElementById('recv-bytes').textContent = fmt(stats.recv.bytes);
+  document.getElementById('recv-rate').textContent = fmt(stats.recv.rate)+'/s';
+  document.getElementById('sys-cpu').textContent = sysInfo.cpu;
+  document.getElementById('sys-ram').textContent = sysInfo.ram;
+  document.getElementById('sys-uptime').textContent = sysInfo.uptime;
+
+  const threat = connectedClients.length>5?'CRITICAL':(connectedClients.length>0?'ELEVATED':'LOW');
+  const threatEl = document.getElementById('threat-level');
+  threatEl.textContent = `THREAT: ${threat}`;
+  threatEl.style.color = connectedClients.length>0?'var(--red-bright)':'var(--green-ok)';
+});
+
+/* ── LISTENERS ── */
+let activePorts = [];
+
+socket.on('listeners_update', (ports) => {
+  activePorts = ports;
+  document.getElementById('port-count').textContent = ports.length;
+  document.getElementById('port-display').textContent = ports.length ? ports.join(', ')+' ▾' : 'NONE ▾';
+  const list = document.getElementById('active-ports-list');
+  list.innerHTML = '';
+  ports.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'port-item';
+    item.innerHTML = `<span class="port-item-num">PORT ${p}</span><button class="port-stop-btn" onclick="socket.emit('stop_listener',${p})">✕</button>`;
+    list.appendChild(item);
+  });
+});
+
+/* ── PORT DROPDOWN ── */
+(function() {
+  const trigger = document.getElementById('port-display');
+  const dd = document.getElementById('port-dropdown');
+  const input = document.getElementById('new-port-input');
+  const btn = document.getElementById('add-port-btn');
+
+  trigger.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if(dd.classList.contains('show')) { dd.classList.remove('show'); return; }
+    dd.classList.add('show');
+    setTimeout(()=>input.focus(),100);
+  });
+
+  dd.addEventListener('click', e => e.stopPropagation());
+  dd.addEventListener('mousedown', e => e.stopPropagation());
+
+  document.addEventListener('click', e => {
+    if(!dd.contains(e.target) && e.target!==trigger) dd.classList.remove('show');
+  });
+
+  btn.addEventListener('click', function() {
+    const port = parseInt(input.value);
+    if(!port||port<1||port>65535) return;
+    socket.emit('start_listener', port);
+    input.value = '';
+    dd.classList.remove('show');
+  });
+
+  input.addEventListener('keydown', e => { if(e.key==='Enter') btn.click(); });
+})();
+
+/* ── CLOCK ── */
+(function() {
+  const clock = document.getElementById('clock');
+  function tick() {
+    const d = new Date();
+    clock.textContent = d.toISOString().replace('T',' ').slice(0,19)+' UTC';
+  }
+  tick(); setInterval(tick, 1000);
+})();
+
+/* ── SPA NAVIGATION ── */
+(function() {
+  const homeView = document.getElementById('home-view');
+  const iframeView = document.getElementById('iframe-view');
+  const iframe = document.getElementById('iframe-frame');
+
+  const pages = {
+    'clients':'UI/clients.html','logs':'UI/logs.html',
+    'build':'UI/build.html','deploy':'UI/deploy.html','settings':'UI/settings.html'
+  };
+
+  const sidebarBtns = {
+    'home':document.getElementById('btn-home'),'clients':document.getElementById('btn-clients'),
+    'logs':document.getElementById('btn-logs'),'build':document.getElementById('btn-add'),
+    'deploy':document.getElementById('btn-deploy'),'settings':document.getElementById('btn-settings')
+  };
+
+  const bnavBtns = document.querySelectorAll('.bnav-btn');
+
+  function setActive(key) {
+    Object.values(sidebarBtns).forEach(b => b&&b.classList.remove('active'));
+    if(sidebarBtns[key]) sidebarBtns[key].classList.add('active');
+    bnavBtns.forEach(b => { b.classList.toggle('active', b.dataset.page===key); });
+  }
+
+  document.getElementById('btn-home').onclick = () => {
+    iframeView.classList.remove('active');
+    homeView.classList.add('active');
+    iframe.src = 'about:blank';
+    setActive('home');
+    closeDrawer();
+  };
+
+  window.navigateTo = function(key) {
+    if(!pages[key]) return;
+    homeView.classList.remove('active');
+    iframeView.classList.add('active');
+    iframe.src = pages[key];
+    setActive(key);
+    closeDrawer();
+  };
+
+  // Wire sidebar buttons
+  Object.entries(sidebarBtns).forEach(([key,btn]) => {
+    if(btn && key!=='home') btn.onclick = () => window.navigateTo(key);
+  });
+
+  // Wire bottom nav buttons
+  bnavBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = btn.dataset.page;
+      if(page==='home') document.getElementById('btn-home').click();
+      else window.navigateTo(page);
+    });
+  });
+
+  setActive('home');
+
+  /* ── DRAWER (mobile) ── */
+  const menuToggle = document.getElementById('menu-toggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+
+  window.closeDrawer = function() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  };
+
+  menuToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  });
+
+  overlay.addEventListener('click', closeDrawer);
+
+  /* ── RESIZE: hide sidebar on mobile ── */
+  function handleResize() {
+    if(innerWidth>768) closeDrawer();
+  }
+  window.addEventListener('resize', handleResize);
+})();
+
+/* ── TERMINAL DUMMY LINES ── */
+(function() {
+  const lines = document.getElementById('term-lines');
+  if(!lines) return;
+  const msgs = ['Scanning topology...','Route established','AES-256 handshake OK','Targeting active','System monitoring ON'];
+  let idx = 0;
+  function addLine() {
+    const el = document.createElement('div');
+    el.className = 'term-line';
+    el.textContent = '> '+msgs[idx++%msgs.length];
+    lines.appendChild(el);
+    if(lines.children.length>4) lines.removeChild(lines.firstChild);
+    setTimeout(()=>el.classList.add('active'),50);
+  }
+  addLine(); setInterval(addLine, 4000);
+})();
+
+/* ── CUSTOM EVENT FOR client.js compatibility ── */
+// Some client.js functions reference elements we've kept intact.
+// Ensure listener_status, initial_clients, etc still work.
+// (client.js handles those natively)
+
+})();
+</script>
+</body>
+</html>
